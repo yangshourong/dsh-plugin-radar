@@ -84,6 +84,27 @@ window.__ModuleLoader__.load({
       },
       message: { margin: 0, fontSize: '12px', color: COLORS.secondary },
       unavailable: { margin: 0, color: COLORS.error, fontSize: '12px' },
+      linkButton: {
+        border: 'none',
+        background: 'transparent',
+        color: COLORS.brand,
+        cursor: 'pointer',
+        font: 'inherit',
+        padding: '0',
+        textDecoration: 'underline',
+      },
+    }
+
+    /** Loopback endpoints served by the Host half. */
+    const STATUS_URL = '/dsh-plugin-radar/status'
+    const VALIDATE_URL = '/dsh-plugin-radar/token/validate'
+
+    /** Fetch JSON from the Host route, with same-origin credentials. */
+    async function fetchJson(url, init) {
+      const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', ...init })
+      const body = await response.json().catch(() => undefined)
+      if (!response.ok) throw new Error(body?.error === undefined ? `HTTP ${response.status}` : String(body.error))
+      return body
     }
 
     /** Coerce the accepted Host values into the four fields this page edits. */
@@ -144,9 +165,36 @@ window.__ModuleLoader__.load({
       const [message, setMessage] = React.useState({ tone: 'info', text: '' })
       // The token is a secret: the Host never sends it back, so it lives only in this draft.
       const [tokenDraft, setTokenDraft] = React.useState('')
+      // Host-reported token status; the value itself is never returned.
+      const [tokenStatus, setTokenStatus] = React.useState({ loading: true, configured: false, source: 'none', quota: undefined, error: '' })
+      // Validation result for the token currently typed into the draft.
+      const [tokenCheck, setTokenCheck] = React.useState(undefined)
       React.useEffect(() => {
         if (!dirty) setDraft(accepted)
       }, [acceptedKey, dirty])
+      React.useEffect(() => {
+        let cancelled = false
+        const controller = new AbortController()
+        fetchJson(STATUS_URL, { signal: controller.signal })
+          .then((data) => {
+            if (cancelled) return
+            setTokenStatus({
+              loading: false,
+              configured: data?.token?.configured === true,
+              source: data?.token?.source ?? 'none',
+              quota: undefined,
+              error: '',
+            })
+          })
+          .catch((error) => {
+            if (cancelled) return
+            setTokenStatus({ loading: false, configured: false, source: 'none', quota: undefined, error: error instanceof Error ? error.message : String(error) })
+          })
+        return () => {
+          cancelled = true
+          controller.abort()
+        }
+      }, [])
 
       if (props.view === 'summary') {
         const languageText = accepted.defaultLang === 'zh' ? '中文' : 'English'
@@ -184,6 +232,7 @@ window.__ModuleLoader__.load({
           if (acceptedWrite) {
             setDirty(false)
             setTokenDraft('')
+            void refreshTokenStatus(false)
             setMessage({
               tone: 'success',
               text: tokenValue.length > 0
@@ -207,11 +256,59 @@ window.__ModuleLoader__.load({
         try {
           const acceptedWrite = await form.mutate([{ op: 'unset', path: [TOKEN_FIELD] }], snapshot.revision)
           setTokenDraft('')
+          if (acceptedWrite) void refreshTokenStatus(false)
           setMessage(acceptedWrite
             ? { tone: 'success', text: 'GitHub Token 已移除，搜索会退回匿名额度（10 次/分）。' }
             : { tone: 'error', text: '移除被拒绝，请刷新后重试。' })
         } catch (error) {
           setMessage({ tone: 'error', text: `移除失败：${error instanceof Error ? error.message : String(error)}` })
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      const refreshTokenStatus = async (checkQuota) => {
+        setTokenStatus((previous) => ({ ...previous, loading: true, error: '' }))
+        try {
+          const data = await fetchJson(checkQuota ? `${STATUS_URL}?check=1` : STATUS_URL)
+          setTokenStatus({
+            loading: false,
+            configured: data?.token?.configured === true,
+            source: data?.token?.source ?? 'none',
+            quota: data?.quota,
+            error: '',
+          })
+        } catch (error) {
+          setTokenStatus((previous) => ({
+            ...previous,
+            loading: false,
+            error: error instanceof Error ? error.message : String(error),
+          }))
+        }
+      }
+
+      const validateDraftToken = async () => {
+        const tokenValue = tokenDraft.trim()
+        if (tokenValue.length === 0) {
+          setTokenCheck({ kind: 'info', text: '请先粘贴 Token' })
+          return
+        }
+        setBusy(true)
+        setTokenCheck({ kind: 'info', text: '正在验证…' })
+        try {
+          const data = await fetchJson(VALIDATE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tokenValue }),
+          })
+          if (data?.valid === true) {
+            const suffix = data.searchRemaining === undefined ? '' : `（剩余 ${data.searchRemaining} 次）`
+            setTokenCheck({ kind: 'ok', text: `${data.message ?? 'Token 有效'}${suffix}` })
+          } else {
+            setTokenCheck({ kind: 'error', text: data?.message ?? 'Token 无效' })
+          }
+        } catch (error) {
+          setTokenCheck({ kind: 'error', text: `验证失败：${error instanceof Error ? error.message : String(error)}` })
         } finally {
           setBusy(false)
         }
@@ -296,24 +393,55 @@ window.__ModuleLoader__.load({
         '关闭后只使用社区精选清单和内置离线索引。',
       ))
 
+      const tokenStatusText = tokenStatus.loading
+        ? '正在读取 Token 状态…'
+        : tokenStatus.error.length > 0
+          ? `无法读取 Token 状态：${tokenStatus.error}`
+          : tokenStatus.configured
+            ? `当前：已配置（来源：${tokenStatus.source === 'credential' ? 'DSH 凭据' : '配置页'}）${tokenStatus.quota?.valid === true && tokenStatus.quota.searchLimit !== undefined ? ` · 额度 ${tokenStatus.quota.searchLimit} 次/分` : ''}`
+            : '当前：未配置（匿名额度 10 次/分）'
+
       children.push(fieldRow(
         'radar-github-token',
         'GitHub Token（可选）',
-        h('input', {
-          id: 'radar-github-token',
-          type: 'password',
-          style: styles.input,
-          value: tokenDraft,
-          disabled,
-          autoComplete: 'off',
-          spellCheck: false,
-          placeholder: '粘贴 GitHub Token，留空表示不修改',
-          onChange: (event) => {
-            setTokenDraft(event.target.value)
-            setMessage({ tone: 'info', text: '' })
-          },
-        }),
-        '配置后 GitHub 搜索额度从 10 次/分提升到 30 次/分；只保存在本机 profile 配置里，保存后不再回显，可随时移除。',
+        h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+          h('input', {
+            id: 'radar-github-token',
+            type: 'password',
+            style: { ...styles.input, maxWidth: '260px' },
+            value: tokenDraft,
+            disabled,
+            autoComplete: 'off',
+            spellCheck: false,
+            placeholder: '粘贴 GitHub Token，留空表示不修改',
+            onChange: (event) => {
+              setTokenDraft(event.target.value)
+              setTokenCheck(undefined)
+              setMessage({ tone: 'info', text: '' })
+            },
+          }),
+          h('button', {
+            type: 'button',
+            style: { ...styles.secondaryButton, ...(busy || tokenDraft.trim().length === 0 ? { opacity: 0.55, cursor: 'default' } : {}) },
+            disabled: busy || tokenDraft.trim().length === 0,
+            onClick: () => { void validateDraftToken() },
+          }, '验证'),
+          tokenStatus.configured
+            ? h('button', {
+              type: 'button',
+              style: styles.linkButton,
+              onClick: () => { void refreshTokenStatus(true) },
+            }, '检查当前额度')
+            : null,
+        ),
+        h('span', null,
+          '配置后 GitHub 搜索额度从 10 次/分提升到 30 次/分；只保存在本机 profile 配置里，保存后不再回显，可随时移除。',
+          h('br'),
+          h('span', { style: { color: tokenStatus.error.length > 0 ? COLORS.error : COLORS.secondary } }, tokenStatusText),
+          tokenCheck === undefined
+            ? null
+            : h('span', { style: { marginLeft: '8px', color: tokenCheck.kind === 'error' ? COLORS.error : tokenCheck.kind === 'ok' ? COLORS.success : COLORS.secondary } }, tokenCheck.text),
+        ),
       ))
 
       children.push(fieldRow(

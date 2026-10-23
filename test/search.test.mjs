@@ -68,7 +68,7 @@ const curatedRecords = [
 ]
 
 test('merges live and curated rows, dedupes, enriches, and fills to the limit', async () => {
-  const searcher = createSearcher({ github: fakeGitHub(githubItems), curated: fakeCurated(curatedRecords), options: baseOptions })
+  const searcher = createSearcher({ github: fakeGitHub(githubItems), curated: fakeCurated(curatedRecords), getOptions: () => baseOptions })
   const value = await searcher.search('gamma beta', { limit: 3, lang: 'zh', installProfile: 'desktop' })
 
   assert.equal(value.results.length, 3)
@@ -86,7 +86,7 @@ test('falls back to curated keyword matches when GitHub fails', async () => {
   const searcher = createSearcher({
     github: fakeGitHub([], { fail: new Error('GitHub search HTTP 500') }),
     curated: fakeCurated(curatedRecords),
-    options: baseOptions,
+    getOptions: () => baseOptions,
   })
   const value = await searcher.search('gamma', { limit: 3, installProfile: 'desktop' })
   assert.equal(value.results.length, 1)
@@ -100,7 +100,7 @@ test('returns an explanatory note when both sources fail', async () => {
   const searcher = createSearcher({
     github: fakeGitHub([], { fail: new Error('offline') }),
     curated: fakeCurated([], { fail: new Error('registry down') }),
-    options: baseOptions,
+    getOptions: () => baseOptions,
   })
   const value = await searcher.search('tui', { limit: 3 })
   assert.deepEqual(value.results, [])
@@ -119,7 +119,7 @@ test('honors the total budget with a hanging sender', async () => {
   const searcher = createSearcher({
     github: hangingGitHub,
     curated: fakeCurated(curatedRecords),
-    options: { ...baseOptions, totalBudgetMs: 120 },
+    getOptions: () => ({ ...baseOptions, totalBudgetMs: 120 }),
   })
   const value = await searcher.search('gamma', { limit: 3 })
   assert.ok(value.results.length > 0)
@@ -130,7 +130,7 @@ test('reports disabled sources instead of calling them', async () => {
   const searcher = createSearcher({
     github: undefined,
     curated: undefined,
-    options: { ...baseOptions, liveSearch: false, curatedFallback: false },
+    getOptions: () => ({ ...baseOptions, liveSearch: false, curatedFallback: false }),
   })
   const value = await searcher.search('tui', { limit: 3 })
   assert.deepEqual(value.results, [])

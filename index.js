@@ -7,6 +7,11 @@
  * the rows, enriches bilingual descriptions, and falls back to a bundled
  * offline index with a Chinese-aware keyword engine when the network fails.
  *
+ * Configuration is read on every tool call and HTTP request (`getOptions`), so
+ * settings saved on the plugin's page apply to the next call without reloading
+ * the plugin. The optional loopback route serves the configuration page's token
+ * status/quota checks and never returns a secret.
+ *
  * Compatibility approach: the tool is registered through the plain 0.2.x
  * ToolDefinition contract (raw JSON Schemas, no `@deepseek-ai/dsh-tools`
  * import), so DSH peer-version gating cannot block it. The only dependency is
@@ -19,8 +24,10 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import z from '@deepseek-ai/schemastery'
 
+import { createRadarHandler, ROUTE_PREFIX } from './lib/api.js'
 import { defineConfig, resolveInstallProfile, resolveOptions } from './lib/config.js'
 import { OUTPUT_SCHEMA, PARAMETERS_SCHEMA, TOOL_DESCRIPTION, TOOL_NAME } from './lib/contract.js'
+import { resolveConfiguredToken } from './lib/github-token.js'
 import { renderText } from './lib/render.js'
 import { createSearcher } from './lib/search.js'
 import { createCuratedSource } from './lib/sources/curated.js'
@@ -40,55 +47,38 @@ const SNAPSHOT_PATH = fileURLToPath(new URL('./data/registry-snapshot.json', imp
 const CACHE_PATH = join(resolveDshHome(), 'cache', 'dsh-plugin-radar-ysr', 'registry-cache.json')
 
 /**
- * Resolve the optional GitHub token: the token saved on the configuration page
- * wins, then the DSH credential named by `tokenCredential`. The credentials
- * service is an optional dependency, so it is read with `ctx.get()` instead of
- * `inject`.
- */
-async function resolveToken(ctx, options) {
-  const saved = typeof options.githubToken === 'string' ? options.githubToken.trim() : ''
-  if (saved.length > 0) return saved
-  const credentialName = typeof options.tokenCredential === 'string' ? options.tokenCredential.trim() : ''
-  if (credentialName.length === 0) return undefined
-  try {
-    const credentials = typeof ctx.get === 'function' ? ctx.get('credentials') : undefined
-    if (credentials === undefined || typeof credentials.resolve !== 'function') return undefined
-    const resolved = await credentials.resolve(credentialName)
-    const value = resolved?.value
-    return typeof value === 'string' && value.length > 0 ? value : undefined
-  } catch {
-    return undefined
-  }
-}
-
-/**
- * Register the discovery tool.
+ * Register the discovery tool and the loopback status route.
  *
- * @param ctx - plugin context providing `ctx.tools`.
- * @param config - Loader-validated plugin config.
- * @returns cleanup: aborts the background warm-up and unregisters the tool.
+ * @param ctx - plugin context providing `ctx.tools` (and optionally `webServer`).
+ * @param config - Loader-validated plugin config; volatile fields stay live.
+ * @returns cleanup: aborts the background warm-up and disposes registrations.
  */
 export function apply(ctx, config) {
-  const options = resolveOptions(config)
-  if (!options.enabled) return
+  const initial = resolveOptions(config)
+  if (!initial.enabled) return () => {}
 
-  const github = createGitHubSource({ timeoutMs: options.requestTimeoutMs })
+  // Live configuration: the tool and the HTTP route re-read these boxes per call.
+  const getOptions = () => resolveOptions(config)
+
+  const github = createGitHubSource({ timeoutMs: initial.requestTimeoutMs })
   const curated = createCuratedSource({
     cachePath: CACHE_PATH,
     snapshotPath: SNAPSHOT_PATH,
-    registryUrls: options.registryUrls,
-    mirrorUrls: options.mirrorUrls,
-    timeoutMs: options.requestTimeoutMs,
-    ttlMs: options.cacheTtlMinutes * 60 * 1000,
+    registryUrls: initial.registryUrls,
+    mirrorUrls: initial.mirrorUrls,
+    timeoutMs: initial.requestTimeoutMs,
+    ttlMs: Math.max(0, initial.cacheTtlMinutes) * 60 * 1000,
   })
-  const searcher = createSearcher({ github, curated, options })
+  const searcher = createSearcher({ github, curated, getOptions })
 
   // Warm the curated cache in the background so the first tool call does not
   // pay the download. Best effort; failures surface through the normal chain.
   const warmUp = new AbortController()
-  void curated.warmUp(warmUp.signal).catch(() => {})
+  if (initial.curatedFallback === true) void curated.warmUp(warmUp.signal).catch(() => {})
 
-  const disposeTool = ctx.tools.register({
+  const disposers = []
+
+  disposers.push(ctx.tools.register({
     name: TOOL_NAME,
     description: TOOL_DESCRIPTION,
     parameters: PARAMETERS_SCHEMA,
@@ -96,14 +86,15 @@ export function apply(ctx, config) {
       schema: OUTPUT_SCHEMA,
       render: (_args, value) => [{ type: 'text', text: renderText(value) }],
     },
-    timeoutMs: options.totalBudgetMs + 5000,
+    timeoutMs: initial.totalBudgetMs + 5000,
     isConcurrencySafe: () => true,
     async execute(args, exec) {
+      const options = getOptions()
       const query = typeof args?.query === 'string' ? args.query : ''
       if (query.trim().length === 0) throw new Error('query must be a non-empty string')
       const limit = clampNumber(args?.limit, 1, options.maxResults, options.maxResults)
       const installProfile = resolveInstallProfile(options)
-      const token = await resolveToken(ctx, options)
+      const token = (await resolveConfiguredToken(ctx, options)).token
       return searcher.search(query, {
         limit,
         lang: typeof args?.lang === 'string' ? args.lang : options.defaultLang,
@@ -112,10 +103,42 @@ export function apply(ctx, config) {
         installProfile,
       })
     },
-  })
+  }))
+
+  // The configuration page lives in the Web GUI; without a web server this
+  // plugin still exposes its tool, only the page's status helpers are absent.
+  const webServer = typeof ctx.get === 'function' ? ctx.get('webServer') : undefined
+  if (webServer !== undefined && typeof webServer.register === 'function') {
+    const installRoute = () => {
+      let unregister
+      try {
+        unregister = webServer.register({
+          kind: 'prefix',
+          path: ROUTE_PREFIX,
+          handler: createRadarHandler({ ctx, getOptions }),
+        })
+      } catch (error) {
+        ctx.logger?.warn?.('[dsh-plugin-radar] HTTP route registration failed:', error)
+      }
+      return () => {
+        try {
+          unregister?.()
+        } catch {
+          // Already disposed.
+        }
+      }
+    }
+    disposers.push(typeof ctx.effect === 'function' ? ctx.effect(installRoute, 'dsh-plugin-radar: http routes') : installRoute())
+  }
 
   return () => {
     warmUp.abort()
-    disposeTool()
+    for (const dispose of disposers) {
+      try {
+        dispose()
+      } catch {
+        // Keep disposing the rest.
+      }
+    }
   }
 }
