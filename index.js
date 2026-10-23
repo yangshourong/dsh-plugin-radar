@@ -107,28 +107,48 @@ export function apply(ctx, config) {
 
   // The configuration page lives in the Web GUI; without a web server this
   // plugin still exposes its tool, only the page's status helpers are absent.
-  const webServer = typeof ctx.get === 'function' ? ctx.get('webServer') : undefined
-  if (webServer !== undefined && typeof webServer.register === 'function') {
-    const installRoute = () => {
-      let unregister
+  // `ctx.inject` waits for the optional service instead of sampling it once at
+  // activation: on a cold boot the plugin can load before the web server does.
+  const installRoute = (scoped, webServer) => {
+    let unregister
+    try {
+      unregister = webServer.register({
+        kind: 'prefix',
+        path: ROUTE_PREFIX,
+        handler: createRadarHandler({ ctx: scoped, getOptions }),
+      })
+    } catch (error) {
+      scoped.logger?.warn?.('[dsh-plugin-radar] HTTP route registration failed:', error)
+    }
+    return () => {
       try {
-        unregister = webServer.register({
-          kind: 'prefix',
-          path: ROUTE_PREFIX,
-          handler: createRadarHandler({ ctx, getOptions }),
-        })
-      } catch (error) {
-        ctx.logger?.warn?.('[dsh-plugin-radar] HTTP route registration failed:', error)
-      }
-      return () => {
-        try {
-          unregister?.()
-        } catch {
-          // Already disposed.
-        }
+        unregister?.()
+      } catch {
+        // Already disposed.
       }
     }
-    disposers.push(typeof ctx.effect === 'function' ? ctx.effect(installRoute, 'dsh-plugin-radar: http routes') : installRoute())
+  }
+
+  if (typeof ctx.inject === 'function') {
+    // Optional dependency: the child fiber activates whenever `webServer` exists.
+    const routeFiber = ctx.inject(['webServer'], (scoped) => {
+      const webServer = scoped.webServer
+      if (webServer === undefined || typeof webServer.register !== 'function') return
+      return installRoute(scoped, webServer)
+    })
+    disposers.push(() => {
+      try {
+        routeFiber?.dispose?.()
+      } catch {
+        // Parent disposal tears the child fiber down as well.
+      }
+    })
+  } else {
+    // Older Cordis without `ctx.inject`: try once at activation.
+    const webServer = typeof ctx.get === 'function' ? ctx.get('webServer') : undefined
+    if (webServer !== undefined && typeof webServer.register === 'function') {
+      disposers.push(installRoute(ctx, webServer))
+    }
   }
 
   return () => {

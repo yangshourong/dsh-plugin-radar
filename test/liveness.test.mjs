@@ -92,3 +92,43 @@ test('the tool re-reads volatile configuration on every call', async () => {
     globalThis.fetch = originalFetch
   }
 })
+
+test('registers the status route once the web server is available', () => {
+  const config = {
+    enabled: box(true),
+    liveSearch: box(false),
+    curatedFallback: box(false),
+  }
+  let injected
+  let handler
+  const ctx = {
+    tools: {
+      register() {
+        return () => {}
+      },
+    },
+    get() {
+      return undefined
+    },
+    inject(deps, callback) {
+      injected = deps
+      const scoped = {
+        webServer: {
+          register(options) {
+            handler = options.handler
+            return () => {}
+          },
+        },
+        logger: undefined,
+        get() {
+          return undefined
+        },
+      }
+      callback(scoped)
+      return { dispose() {} }
+    },
+  }
+  apply(ctx, config)
+  assert.deepEqual(injected, ['webServer'])
+  assert.equal(typeof handler, 'function')
+})
