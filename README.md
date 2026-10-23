@@ -91,7 +91,25 @@ Agent 觉得需要时会自动调用 `search_dsh_plugins`。你也可以直接�
 
 ---
 
-## 设置项（都可以在 DSH 设置页里改）
+## 设置项
+
+> ⚠️ **当前版本没有设置页面**（在 DSH 设置里找不到它是正常的）。
+>
+> 原因是：本插件是纯 Host 插件，没有提供 Client 配置界面；而 DSH 0.2.1 的「设置 → 插件」是**只读清单**，插件的配置表单必须由插件自己注册 `plugins.bundle.config` 槽位、显示在侧边栏 **Plugins** 的插件详情页里才会出现——本插件目前还没有做这一步。
+>
+> 现在改配置的方式：编辑当前 profile 的 `cordis.patch.yml`（Windows 默认路径 `C:\Users\<用户名>\.dsh\profiles\<profile>\cordis.patch.yml`），追加或覆盖一段：
+>
+> ```yaml
+> - id: dsh-plugin-radar-ysr
+>   name: "@yangshourong/dsh-plugin-radar-ysr"
+>   config:
+>     defaultLang: zh
+>     maxResults: 10
+> ```
+>
+> 只写想改的字段即可，其余保持默认；保存后重启 DSH（或等 HMR 重载）生效。注意这里用的是**行 id** `dsh-plugin-radar-ysr`，不是包名。
+>
+> 如果后续加上 Client 配置页，入口会在**侧边栏 Plugins → 本插件 → 配置**，而不是设置页。
 
 | 设置 | 默认值 | 用大白话说 |
 |---|---|---|
@@ -157,7 +175,7 @@ A：运行 `npm run update-data` 可以重新生成 `data/registry-snapshot.json
 
 ## 给开发者
 
-- **技术栈**：纯 ESM JavaScript，无构建步骤；唯一运行时依赖是 `@deepseek-ai/schemastery`（只用来声明设置项的表单）。
+- **技术栈**：纯 ESM JavaScript，无构建步骤；唯一运行时依赖是 `@deepseek-ai/schemastery`（用来声明 Config schema：校验配置、提供默认值；将来加配置页时也复用它）。
 - **刻意不依赖 `@deepseek-ai/dsh-tools`**：直接按 DSH 0.2.x 的 `ToolDefinition` 契约注册工具（手写 JSON Schema），因此不会被 peer 版本范围卡住；`test/contract.test.mjs` 负责盯着契约是否漂移。
 - **测试**：全部离线，用注入的假 `fetch` 覆盖正常、空结果、403/429 限流、网络失败、取消、超时、缓存、镜像回退等分支：
 
@@ -210,6 +228,8 @@ keyword engine — and always states which sources were used. Install from npm
 with `dsh plugin --profile <profile> add @yangshourong/dsh-plugin-radar-ysr`,
 or directly from GitHub with `dsh plugin --profile <profile> add
 github:yangshourong/dsh-plugin-radar`; requires DSH 0.2.x and Node.js 20.3+.
+Configuration is currently edited through the profile's `cordis.patch.yml`
+(the row id is `dsh-plugin-radar-ysr`); there is no settings-page form yet.
 
 MIT licensed. Independent implementation inspired by
 [`dsh-find-plugin`](https://github.com/awesome-dsh-plugin/dsh-find-plugin);
