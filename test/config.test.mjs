@@ -44,6 +44,20 @@ test('out-of-range numbers clamp and invalid types fall back', () => {
   assert.equal(options.maxDescriptionChars, 40)
 })
 
+test('observability options default on and can be blanked off', () => {
+  const options = resolveOptions({})
+  assert.equal(options.resultStamp, DEFAULT_OPTIONS.resultStamp)
+  assert.equal(options.usageLog, true)
+  assert.equal(options.usageLogFile, '')
+
+  assert.equal(resolveOptions({ resultStamp: '  a b\tc  ' }).resultStamp, 'a b c')
+  assert.equal(resolveOptions({ resultStamp: '' }).resultStamp, '')
+  assert.equal(resolveOptions({ usageLogFile: '  ' }).usageLogFile, '')
+
+  assert.equal(resolveOptions({ usageLog: true }).usageLog, true)
+  assert.equal(resolveOptions({ usageLog: 'true' }).usageLog, false)
+})
+
 test('normalizeLang accepts zh variants and falls back', () => {
   assert.equal(normalizeLang('zh'), 'zh')
   assert.equal(normalizeLang('zh-CN'), 'zh')

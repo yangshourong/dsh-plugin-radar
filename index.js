@@ -32,6 +32,7 @@ import { renderText } from './lib/render.js'
 import { createSearcher } from './lib/search.js'
 import { createCuratedSource } from './lib/sources/curated.js'
 import { createGitHubSource } from './lib/sources/github.js'
+import { createUsageLogger, usageLogPath } from './lib/usage-log.js'
 import { clampNumber, resolveDshHome } from './lib/util.js'
 
 /** Plugin name; must match package.json `name` and the patch row. */
@@ -60,6 +61,10 @@ export function apply(ctx, config) {
   // Live configuration: the tool and the HTTP route re-read these boxes per call.
   const getOptions = () => resolveOptions(config)
 
+  // The plugin's own record of what it executed: one JSON object per call, keyed
+  // by the session id. Best effort, so a log failure never becomes a tool failure.
+  const usageLog = createUsageLogger({ getOptions, filePath: (options) => usageLogPath(options) })
+
   const github = createGitHubSource({ timeoutMs: initial.requestTimeoutMs })
   const curated = createCuratedSource({
     cachePath: CACHE_PATH,
@@ -84,7 +89,7 @@ export function apply(ctx, config) {
     parameters: PARAMETERS_SCHEMA,
     output: {
       schema: OUTPUT_SCHEMA,
-      render: (_args, value) => [{ type: 'text', text: renderText(value) }],
+      render: (_args, value) => [{ type: 'text', text: renderText(value, getOptions()) }],
     },
     timeoutMs: initial.totalBudgetMs + 5000,
     isConcurrencySafe: () => true,
@@ -95,13 +100,20 @@ export function apply(ctx, config) {
       const limit = clampNumber(args?.limit, 1, options.maxResults, options.maxResults)
       const installProfile = resolveInstallProfile(options)
       const token = (await resolveConfiguredToken(ctx, options)).token
-      return searcher.search(query, {
+      const value = await searcher.search(query, {
         limit,
         lang: typeof args?.lang === 'string' ? args.lang : options.defaultLang,
         signal: exec?.signal,
         token,
         installProfile,
       })
+      usageLog.record({
+        sessionId: exec?.agent?.id,
+        query,
+        count: value?.results?.length ?? 0,
+        note: value?.note ?? '',
+      })
+      return value
     },
   }))
 

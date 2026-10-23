@@ -30,6 +30,8 @@
 | 12 | P2 | npm 第三数据源 | 下载量补充流行度 | 合并 npm 搜索源，失败不影响主链路 | todo |
 | 13 | P2 | 企业网络支持 | 代理/自建 GitHub 可用 | 支持 `GITHUB_API_URL` 与代理提示 | todo |
 | 14 | P2 | 发布自动化 | 减少手工步骤 | CI 自动更新快照 + 校验版本 + Release 草稿 | todo |
+| 15 | P1 | **使用可观察性（硬证据）** | 能确认"这一轮真的用了插件"，而不是只看模型自述 | 结果首行来源标记（`resultStamp`）；每次真实调用按会话 id 落一行 JSONL（`usageLog`/`usageLogFile`），写失败不影响调用 | done（61 个测试全绿，页面已验证） |
+| 16 | P2 | 用 `presentCall` 写调用卡片标题 | 想让"标题"也成为证据 | 已实现并被移除：界面上看不到插件写入的 title，模型侧也读不到 → 不可验证；`callTitle` 与 `lib/presentation.js` 已删 | dropped |
 
 ## 0.2.0 细化（本次）
 
@@ -40,4 +42,7 @@
 - [x] 单测：配置热更新、token 校验、HTTP 处理器（50 个用例全绿）
 - [x] 页面手动验证：Token 状态徽标、验证按钮、改设置后立即生效（用户确认）
 - [x] **修复**：冷启动时插件可能先于 `webServer` 加载，导致状态接口 404/405；改为 `ctx.inject(['webServer'], ...)` 等服务就绪再注册路由
+- [x] **使用可观察性**：结果首行来源标记（`resultStamp`）、每次真实调用按会话 id 追加一行 JSONL 使用记录；`node --test` 61 个用例全绿；页面实测：结果首行是 `via dsh-plugin-radar-ysr`，`usage.log` 按会话 id 落盘
+- [x] **修复**：liveness 用例未指定 `usageLogFile` 时会写到真实 `~/.dsh/cache/dsh-plugin-radar-ysr/usage.log`；改为 `usageLog: box(false)` 保持测试不碰真实文件
+- [~] `presentCall` 写调用卡片标题（`callTitle`，默认"让戎哥想一下…"）已移除：界面上看不到插件写入的 title，模型侧也读不到，无法验证
 - [x] 发布 0.2.0（npm 0.2.0 + tag + Release）

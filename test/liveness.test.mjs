@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
+import { DEFAULT_OPTIONS } from '../lib/config.js'
 import { apply } from '../index.js'
 
 /** A mutable stand-in for a Loader volatile configuration box. */
@@ -58,6 +63,9 @@ test('the tool re-reads volatile configuration on every call', async () => {
       githubToken: box(''),
       requestTimeoutMs: box(1000),
       totalBudgetMs: box(3000),
+      // Keep this test hermetic: without an override, executed calls would write
+      // records into the real plugin cache directory.
+      usageLog: box(false),
     }
     let definition
     const ctx = {
@@ -88,6 +96,60 @@ test('the tool re-reads volatile configuration on every call', async () => {
     const third = await definition.execute({ query: 'token-check' }, { signal })
     assert.equal(third.results.length, 2)
     assert.equal(seenAuthorization.at(-1), 'Bearer ghp_live_token')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('the result stamp and the usage log record the call that actually ran', async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => jsonResponse({ items: [githubItem(1)] })
+  const home = await mkdtemp(join(tmpdir(), 'dsh-radar-usage-'))
+  const usageFile = join(home, 'usage.log')
+  try {
+    const config = {
+      enabled: box(true),
+      liveSearch: box(true),
+      curatedFallback: box(false),
+      resultStamp: box('via dsh-plugin-radar-ysr'),
+      usageLog: box(true),
+      usageLogFile: box(usageFile),
+    }
+    let definition
+    const ctx = {
+      tools: {
+        register(registered) {
+          definition = registered
+          return () => {}
+        },
+      },
+      get() {
+        return undefined
+      },
+    }
+    apply(ctx, config)
+    assert.ok(definition !== undefined, 'tool registered')
+    assert.equal(definition.presentCall, undefined, 'no call-card presentation is registered')
+
+    const signal = new AbortController().signal
+    const result = await definition.execute({ query: 'terminal TUI' }, { signal, agent: { id: 'session-xyz' } })
+    assert.equal(result.results.length, 1)
+    assert.equal(definition.output.render({}, result)[0].text.split('\n\n')[0], 'via dsh-plugin-radar-ysr')
+
+    const line = JSON.parse(readFileSync(usageFile, 'utf8').trim())
+    assert.equal(line.session, 'session-xyz')
+    assert.equal(line.query, 'terminal TUI')
+    assert.equal(line.results, 1)
+
+    // A settings-page save changes the stamp; the next render uses it.
+    config.resultStamp.set('自定义标记')
+    assert.equal(definition.output.render({}, result)[0].text.split('\n\n')[0], '自定义标记')
+
+    // Turning the log off stops writing; the stamp stays on the result.
+    config.usageLog.set(false)
+    await definition.execute({ query: 'second' }, { signal, agent: { id: 'session-xyz' } })
+    assert.equal(readFileSync(usageFile, 'utf8').trim().split('\n').length, 1)
+    assert.equal(definition.output.render({}, result)[0].text.split('\n\n')[0], '自定义标记')
   } finally {
     globalThis.fetch = originalFetch
   }

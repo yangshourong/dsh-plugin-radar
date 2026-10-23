@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+import { DEFAULT_OPTIONS, resolveOptions } from '../lib/config.js'
 import { renderText, UNTRUSTED_NOTICE } from '../lib/render.js'
 
 test('renders numbered rows with stars, source, install command, and the untrusted notice', () => {
@@ -51,4 +52,65 @@ test('renders curated rows with their own source label', () => {
   })
   assert.match(text, /source=curated/)
   assert.doesNotMatch(text, /★/)
+})
+
+test('the stamp leads the block when the caller passes resolved options', () => {
+  const options = resolveOptions({})
+  const text = renderText({
+    results: [
+      {
+        name: 'alpha',
+        url: 'https://github.com/c/alpha',
+        description: '',
+        stars: 0,
+        category: '',
+        updated: '',
+        source: 'curated',
+        install: 'dsh plugin add github:c/alpha',
+      },
+    ],
+    note: '',
+  }, options)
+  const parts = text.split('\n\n')
+  assert.equal(parts[0], DEFAULT_OPTIONS.resultStamp)
+  assert.equal(parts[1], UNTRUSTED_NOTICE)
+})
+
+test('renderText called without options keeps the untrusted notice at the top', () => {
+  const text = renderText({
+    results: [
+      {
+        name: 'alpha',
+        url: 'https://github.com/c/alpha',
+        description: '',
+        stars: 0,
+        category: '',
+        updated: '',
+        source: 'curated',
+        install: 'dsh plugin add github:c/alpha',
+      },
+    ],
+    note: '',
+  })
+  assert.ok(text.startsWith(UNTRUSTED_NOTICE))
+})
+
+test('a blank stamp emits no stamp line', () => {
+  const text = renderText({
+    results: [
+      {
+        name: 'alpha',
+        url: 'https://github.com/c/alpha',
+        description: '',
+        stars: 0,
+        category: '',
+        updated: '',
+        source: 'curated',
+        install: 'dsh plugin add github:c/alpha',
+      },
+    ],
+    note: '',
+  }, resolveOptions({ resultStamp: '   ' }))
+  assert.ok(text.startsWith(UNTRUSTED_NOTICE))
+  assert.doesNotMatch(text, /via dsh-plugin-radar-ysr/)
 })
