@@ -14,6 +14,8 @@ test('defaults apply when no config is provided', () => {
   assert.equal(options.defaultLang, 'en')
   assert.equal(options.liveSearch, true)
   assert.equal(options.curatedFallback, true)
+  assert.equal(options.githubToken, '')
+  assert.equal(options.tokenCredential, 'GITHUB_TOKEN')
   assert.deepEqual(options.registryUrls, [...DEFAULT_OPTIONS.registryUrls])
   assert.deepEqual(options.mirrorUrls, [...DEFAULT_OPTIONS.mirrorUrls])
 })

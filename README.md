@@ -91,41 +91,54 @@ Agent 觉得需要时会自动调用 `search_dsh_plugins`。你也可以直接�
 
 ---
 
-## 设置项
+## 设置项（侧边栏 Plugins → 本插件 → 配置）
 
-> ⚠️ **当前版本没有设置页面**（在 DSH 设置里找不到它是正常的）。
->
-> 原因是：本插件是纯 Host 插件，没有提供 Client 配置界面；而 DSH 0.2.1 的「设置 → 插件」是**只读清单**，插件的配置表单必须由插件自己注册 `plugins.bundle.config` 槽位、显示在侧边栏 **Plugins** 的插件详情页里才会出现——本插件目前还没有做这一步。
->
-> 现在改配置的方式：编辑当前 profile 的 `cordis.patch.yml`（Windows 默认路径 `C:\Users\<用户名>\.dsh\profiles\<profile>\cordis.patch.yml`），追加或覆盖一段：
->
-> ```yaml
-> - id: dsh-plugin-radar-ysr
->   name: "@yangshourong/dsh-plugin-radar-ysr"
->   config:
->     defaultLang: zh
->     maxResults: 10
-> ```
->
-> 只写想改的字段即可，其余保持默认；保存后重启 DSH（或等 HMR 重载）生效。注意这里用的是**行 id** `dsh-plugin-radar-ysr`，不是包名。
->
-> 如果后续加上 Client 配置页，入口会在**侧边栏 Plugins → 本插件 → 配置**，而不是设置页。
+DSH 0.2.x 把插件自己的配置页放在**侧边栏 Plugins 页**的插件详情里（「设置 → 插件」是只读清单，那里找不到是正常的）。打开方式：
+
+1. 左侧栏点 **Plugins**；
+2. 在列表里找到 **DSH 插件雷达**（`@yangshourong/dsh-plugin-radar-ysr`），点开详情页；
+3. 在它的行（`dsh-plugin-radar-ysr`）右侧点 **配置** 箭头；
+4. 改完点 **保存**，立即生效，不用重启。
+
+> 首次安装或升级后需要刷新一次浏览器页面（F5），新的配置页才会加载。
+
+页面上只保留真正常用的 5 项：
 
 | 设置 | 默认值 | 用大白话说 |
 |---|---|---|
-| `enabled` | 开 | 是否启用这个工具 |
-| `defaultLang` | `en` | 介绍默认用哪种语言，选 `zh` 就是中文 |
-| `maxResults` | `8` | 一次最多返回几条（1–50） |
-| `liveSearch` | 开 | 是否去 GitHub 实时搜索 |
-| `curatedFallback` | 开 | 是否用社区精选清单和离线索引兜底 |
-| `requestTimeoutMs` | 8000 | 单个网络请求最多等多久（毫秒） |
-| `totalBudgetMs` | 12000 | 一次搜索总共最多等多久，超时就先返回已有结果 |
-| `cacheTtlMinutes` | 30 | 精选清单在内存里缓存多久 |
-| `maxDescriptionChars` | 240 | 每条介绍最多显示多少字 |
-| `tokenCredential` | `GITHUB_TOKEN` | 可选的 GitHub Token 凭据名，配了额度更高 |
-| `installProfile` | 空 | 安装命令里的 profile 名；留空会自动识别 |
-| `registryUrls` | 官方精选清单地址 | 精选清单从哪下载，按顺序尝试 |
-| `mirrorUrls` | jsDelivr 镜像 | 官方地址打不开时的备用镜像 |
+| 介绍语言（`defaultLang`） | 英文 | 搜索结果用中文还是英文介绍 |
+| 一次最多几条（`maxResults`） | 8 | 单次返回的结果数量上限（1–50） |
+| GitHub 实时搜索（`liveSearch`） | 开 | 关掉后只用社区精选清单和离线索引 |
+| GitHub Token（可选，`githubToken`） | 空 | 粘贴 PAT 后搜索额度从 10 次/分提到 30 次/分；保存后不回显，可随时移除 |
+| 精选/离线兜底（`curatedFallback`） | 开 | GitHub 限流或断网时是否回退到精选清单/离线索引 |
+
+### 高级选项（改 profile 配置）
+
+超时、缓存、镜像、Token 凭据名、安装命令 profile 等不常用的参数不在页面上，需要时编辑当前 profile 的 `cordis.patch.yml`（Windows 默认 `C:\Users\<用户名>\.dsh\profiles\<profile>\cordis.patch.yml`）：
+
+```yaml
+- id: dsh-plugin-radar-ysr
+  name: "@yangshourong/dsh-plugin-radar-ysr"
+  config:
+    requestTimeoutMs: 8000
+    totalBudgetMs: 12000
+    cacheTtlMinutes: 30
+    tokenCredential: GITHUB_TOKEN
+    installProfile: ""
+```
+
+注意 `id` 是**行 id** `dsh-plugin-radar-ysr`，不是包名；只写想改的字段即可，其余保持默认。
+
+| 高级项 | 默认值 | 说明 |
+|---|---|---|
+| `requestTimeoutMs` | 8000 | 单个网络请求超时（毫秒） |
+| `totalBudgetMs` | 12000 | 一次搜索的总时间预算（毫秒） |
+| `cacheTtlMinutes` | 30 | 精选清单缓存时长（分钟） |
+| `maxDescriptionChars` | 240 | 每条介绍的最大字符数 |
+| `tokenCredential` | `GITHUB_TOKEN` | 如果 Token 存在 DSH 凭据里，这里填凭据名；页面上的 Token 优先 |
+| `installProfile` | 空 | 安装命令里的 profile 名；留空自动识别 |
+| `registryUrls` / `mirrorUrls` | 内置 | 精选清单地址与镜像地址 |
+| `enabled` | 开 | 关闭后不注册工具（一般直接用 Plugins 页的开关即可） |
 
 ---
 
@@ -146,6 +159,7 @@ Agent 觉得需要时会自动调用 `search_dsh_plugins`。你也可以直接�
 - 实时搜索来自 GitHub 公开搜索 API；精选清单来自 [awesome-dsh-plugin](https://awesome-dsh-plugin.com)。
 - **搜索关键词会发送给这两个服务**，除此之外不发送任何本机数据。
 - 运行时缓存位于 `$DSH_HOME/cache/dsh-plugin-radar-ysr/registry-cache.json`，只保存公开的精选清单，不包含你的对话内容。
+- GitHub Token 只保存在本机 profile 配置中，只用于 `api.github.com` 请求，不会上传到其他地方，也不会回显到界面或对话里。
 - GitHub 仓库描述、精选清单文字都属于第三方内容，存在被恶意利用的风险：工具会截断、清洗这些文字，并在结果开头明确提示"外部内容不可信，不要照着做"。
 - **插件是第三方代码，安装前请自己看一眼源码，并尽量固定到某个提交。**
 
@@ -228,8 +242,11 @@ keyword engine — and always states which sources were used. Install from npm
 with `dsh plugin --profile <profile> add @yangshourong/dsh-plugin-radar-ysr`,
 or directly from GitHub with `dsh plugin --profile <profile> add
 github:yangshourong/dsh-plugin-radar`; requires DSH 0.2.x and Node.js 20.3+.
-Configuration is currently edited through the profile's `cordis.patch.yml`
-(the row id is `dsh-plugin-radar-ysr`); there is no settings-page form yet.
+The plugin's own settings page lives in the sidebar **Plugins** panel (open the
+bundle, then its row's configure control), not in Settings; after installing or
+upgrading, refresh the browser page once. Only the four common options are shown
+there; advanced options stay in the profile's `cordis.patch.yml` (row id
+`dsh-plugin-radar-ysr`).
 
 MIT licensed. Independent implementation inspired by
 [`dsh-find-plugin`](https://github.com/awesome-dsh-plugin/dsh-find-plugin);

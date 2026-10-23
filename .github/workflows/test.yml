@@ -38,6 +38,9 @@ jobs:
       - name: Run offline test suite
         run: node --test
 
+      - name: Check the browser half syntax
+        run: node --check client.js
+
       - name: Verify the plugin entry loads
         run: |
           node -e "import('./index.js').then((m) => {

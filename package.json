@@ -1,6 +1,6 @@
 {
   "name": "@yangshourong/dsh-plugin-radar-ysr",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Plugin discovery for DeepSeek Harness: multi-source, star-ranked search across GitHub's dsh-plugin topic and the awesome-dsh-plugin curated list, with a bundled offline index and a real offline keyword engine.",
   "type": "module",
   "license": "MIT",
@@ -33,6 +33,7 @@
   },
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",
     "./cordis.patch.yml": "./cordis.patch.yml",
@@ -40,6 +41,7 @@
   },
   "files": [
     "index.js",
+    "client.js",
     "lib",
     "data",
     "locale",
@@ -51,6 +53,14 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-plugin-manager"
+      ]
     }
   }
 }

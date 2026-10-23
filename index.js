@@ -40,10 +40,14 @@ const SNAPSHOT_PATH = fileURLToPath(new URL('./data/registry-snapshot.json', imp
 const CACHE_PATH = join(resolveDshHome(), 'cache', 'dsh-plugin-radar-ysr', 'registry-cache.json')
 
 /**
- * Resolve the optional GitHub token credential. The credentials service is an
- * optional dependency, so it is read with `ctx.get()` instead of `inject`.
+ * Resolve the optional GitHub token: the token saved on the configuration page
+ * wins, then the DSH credential named by `tokenCredential`. The credentials
+ * service is an optional dependency, so it is read with `ctx.get()` instead of
+ * `inject`.
  */
 async function resolveToken(ctx, options) {
+  const saved = typeof options.githubToken === 'string' ? options.githubToken.trim() : ''
+  if (saved.length > 0) return saved
   const credentialName = typeof options.tokenCredential === 'string' ? options.tokenCredential.trim() : ''
   if (credentialName.length === 0) return undefined
   try {
