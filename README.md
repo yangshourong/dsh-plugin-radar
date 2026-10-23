@@ -32,6 +32,8 @@ DeepSeek Harness（以下简称 DSH）可以安装很多第三方插件，但插
 dsh plugin --profile desktop add @yangshourong/dsh-plugin-radar-ysr
 ```
 
+> npm 包页：<https://www.npmjs.com/package/@yangshourong/dsh-plugin-radar-ysr>
+
 ### 方式二：直接从 GitHub 安装
 
 ```sh
