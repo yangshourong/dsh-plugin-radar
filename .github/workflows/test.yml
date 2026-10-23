@@ -1,0 +1,49 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: node --test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20.x, 22.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run offline test suite
+        run: node --test
+
+      - name: Verify the plugin entry loads
+        run: |
+          node -e "import('./index.js').then((m) => {
+            if (m.name !== '@yangshourong/dsh-plugin-radar-ysr') throw new Error('unexpected plugin name: ' + m.name)
+            if (typeof m.apply !== 'function') throw new Error('apply export missing')
+            if (typeof m.Config !== 'function') throw new Error('Config schema missing')
+            if (!Array.isArray(m.inject) || !m.inject.includes('tools')) throw new Error('inject missing tools')
+            console.log('entry ok:', m.name)
+          }).catch((error) => { console.error(error); process.exit(1) })"
