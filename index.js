@@ -28,7 +28,7 @@ import { createGitHubSource } from './lib/sources/github.js'
 import { clampNumber, resolveDshHome } from './lib/util.js'
 
 /** Plugin name; must match package.json `name` and the patch row. */
-export const name = 'dsh-plugin-radar-ysr'
+export const name = '@yangshourong/dsh-plugin-radar-ysr'
 
 /** `ctx.tools` is the one required service. */
 export const inject = ['tools']

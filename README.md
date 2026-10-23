@@ -1,4 +1,4 @@
-# DSH 插件雷达（npm: dsh-plugin-radar-ysr）
+# DSH 插件雷达（npm: @yangshourong/dsh-plugin-radar-ysr）
 
 ![DSH 插件雷达图标](icon.svg)
 
@@ -29,7 +29,7 @@ DeepSeek Harness（以下简称 DSH）可以安装很多第三方插件，但插
 ### 方式一：从 npm 安装（推荐，最简单）
 
 ```sh
-dsh plugin --profile desktop add dsh-plugin-radar-ysr
+dsh plugin --profile desktop add @yangshourong/dsh-plugin-radar-ysr
 ```
 
 ### 方式二：直接从 GitHub 安装
@@ -142,7 +142,7 @@ A：不一定。不配也能用，只是匿名搜索每分钟 10 次；配了 `G
 A：一次搜索默认最多等 12 秒（可调），超时就先返回已经拿到的结果，并注明"结果可能不完整"。
 
 **Q：从 GitHub 安装时报 pnpm 符号链接（symlink / EPERM）错误？**
-A：这是 Windows 没有开启「开发者模式」导致的（普通用户不能创建符号链接）。优先用 npm 安装 `dsh-plugin-radar-ysr`；如果一定要从 GitHub 装，请在系统设置里开启开发者模式，或以管理员身份运行 DSH。
+A：这是 Windows 没有开启「开发者模式」导致的（普通用户不能创建符号链接）。优先用 npm 安装 `@yangshourong/dsh-plugin-radar-ysr`；如果一定要从 GitHub 装，请在系统设置里开启开发者模式，或以管理员身份运行 DSH。
 
 **Q：内置清单多久更新一次？**
 A：运行 `npm run update-data` 可以重新生成 `data/registry-snapshot.json`。发布新版本时建议顺手更新。
@@ -199,8 +199,8 @@ ready-to-run `dsh plugin add` commands for your current profile.
 When GitHub is rate limited or the network is down, it degrades gracefully to a
 cached curated list or a bundled offline snapshot — including a Chinese-aware
 keyword engine — and always states which sources were used. Install from npm
-with `dsh plugin --profile <profile> add dsh-plugin-radar-ysr`, or directly
-from GitHub with `dsh plugin --profile <profile> add
+with `dsh plugin --profile <profile> add @yangshourong/dsh-plugin-radar-ysr`,
+or directly from GitHub with `dsh plugin --profile <profile> add
 github:yangshourong/dsh-plugin-radar`; requires DSH 0.2.x and Node.js 20.3+.
 
 MIT licensed. Independent implementation inspired by

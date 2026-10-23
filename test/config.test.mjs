@@ -66,11 +66,11 @@ test('install profile prefers explicit config over DSH_PROFILE', () => {
 
 test('detectProfileName finds the profile that links this package', async () => {
   const home = await mkdtemp(join(tmpdir(), 'dsh-radar-home-'))
-  await mkdir(join(home, 'profiles', 'desktop', 'node_modules', 'dsh-plugin-radar-ysr', 'lib'), { recursive: true })
+  await mkdir(join(home, 'profiles', 'desktop', 'node_modules', '@yangshourong', 'dsh-plugin-radar-ysr', 'lib'), { recursive: true })
   await mkdir(join(home, 'profiles', 'other', 'node_modules'), { recursive: true })
-  assert.equal(detectProfileName(home, 'dsh-plugin-radar-ysr'), 'desktop')
+  assert.equal(detectProfileName(home, '@yangshourong/dsh-plugin-radar-ysr'), 'desktop')
   assert.equal(detectProfileName(home, 'not-installed'), '')
-  assert.equal(detectProfileName('', 'dsh-plugin-radar-ysr'), '')
+  assert.equal(detectProfileName('', '@yangshourong/dsh-plugin-radar-ysr'), '')
 })
 
 test('install profile falls back to the linked profile directory without DSH_PROFILE', async () => {
@@ -78,7 +78,7 @@ test('install profile falls back to the linked profile directory without DSH_PRO
   delete process.env.DSH_PROFILE
   try {
     const home = await mkdtemp(join(tmpdir(), 'dsh-radar-home-'))
-    await mkdir(join(home, 'profiles', 'demo', 'node_modules', 'dsh-plugin-radar-ysr'), { recursive: true })
+    await mkdir(join(home, 'profiles', 'demo', 'node_modules', '@yangshourong', 'dsh-plugin-radar-ysr'), { recursive: true })
     assert.equal(resolveInstallProfile({ installProfile: '' }, { dshHome: home }), 'demo')
     assert.equal(resolveInstallProfile({ installProfile: 'explicit' }, { dshHome: home }), 'explicit')
     assert.equal(resolveInstallProfile({ installProfile: '' }, { dshHome: join(home, 'missing') }), '')
