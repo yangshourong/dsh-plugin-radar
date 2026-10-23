@@ -28,7 +28,7 @@ import { createGitHubSource } from './lib/sources/github.js'
 import { clampNumber, resolveDshHome } from './lib/util.js'
 
 /** Plugin name; must match package.json `name` and the patch row. */
-export const name = 'dsh-plugin-radar'
+export const name = 'dsh-plugin-radar-ysr'
 
 /** `ctx.tools` is the one required service. */
 export const inject = ['tools']
@@ -37,7 +37,7 @@ export const inject = ['tools']
 export const Config = defineConfig(z)
 
 const SNAPSHOT_PATH = fileURLToPath(new URL('./data/registry-snapshot.json', import.meta.url))
-const CACHE_PATH = join(resolveDshHome(), 'cache', 'dsh-plugin-radar', 'registry-cache.json')
+const CACHE_PATH = join(resolveDshHome(), 'cache', 'dsh-plugin-radar-ysr', 'registry-cache.json')
 
 /**
  * Resolve the optional GitHub token credential. The credentials service is an

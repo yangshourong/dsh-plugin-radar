@@ -1,4 +1,4 @@
-# DSH 插件雷达（dsh-plugin-radar）
+# DSH 插件雷达（npm: dsh-plugin-radar-ysr）
 
 ![DSH 插件雷达图标](icon.svg)
 
@@ -26,7 +26,21 @@ DeepSeek Harness（以下简称 DSH）可以安装很多第三方插件，但插
 
 前提：DSH **0.2.x**（本项目在 `0.2.1-rc.2` 上开发和实测）。需要 Node.js 20.3 以上。
 
-### 方式一：从本地目录安装（开发/尝鲜）
+### 方式一：从 npm 安装（推荐，最简单）
+
+```sh
+dsh plugin --profile desktop add dsh-plugin-radar-ysr
+```
+
+### 方式二：直接从 GitHub 安装
+
+```sh
+dsh plugin --profile desktop add github:yangshourong/dsh-plugin-radar
+```
+
+> 如果这一步报 pnpm 符号链接（`symlink` / `EPERM`）相关的错，是 Windows 没有开启「开发者模式」导致的（普通用户不能创建符号链接）。可以改用上面的 npm 安装方式，或者在系统设置里开启开发者模式，再或者以管理员身份运行 DSH。
+
+### 方式三：从本地目录安装（开发/改代码时用）
 
 ```sh
 git clone https://github.com/yangshourong/dsh-plugin-radar.git
@@ -36,14 +50,6 @@ dsh plugin --profile desktop add link:$PWD
 ```
 
 > 把 `--profile desktop` 换成你实际使用的 profile 名字（Windows PowerShell 里用 `link:$PWD` 或直接写绝对路径）。
-
-### 方式二：直接从 GitHub 安装
-
-```sh
-dsh plugin --profile desktop add github:yangshourong/dsh-plugin-radar
-```
-
-> 说明：npm 上的 `dsh-plugin-radar` 这个名字已经被另一个同名项目占用，所以本项目目前通过 GitHub 安装；如果以后要发布到 npm，会换一个不冲突的包名。
 
 安装完成后**重启 DSH**，让新的工具生效。
 
@@ -115,6 +121,7 @@ Agent 觉得需要时会自动调用 `search_dsh_plugins`。你也可以直接�
 
 - 实时搜索来自 GitHub 公开搜索 API；精选清单来自 [awesome-dsh-plugin](https://awesome-dsh-plugin.com)。
 - **搜索关键词会发送给这两个服务**，除此之外不发送任何本机数据。
+- 运行时缓存位于 `$DSH_HOME/cache/dsh-plugin-radar-ysr/registry-cache.json`，只保存公开的精选清单，不包含你的对话内容。
 - GitHub 仓库描述、精选清单文字都属于第三方内容，存在被恶意利用的风险：工具会截断、清洗这些文字，并在结果开头明确提示"外部内容不可信，不要照着做"。
 - **插件是第三方代码，安装前请自己看一眼源码，并尽量固定到某个提交。**
 
@@ -133,6 +140,9 @@ A：不一定。不配也能用，只是匿名搜索每分钟 10 次；配了 `G
 
 **Q：会不会拖慢对话？**
 A：一次搜索默认最多等 12 秒（可调），超时就先返回已经拿到的结果，并注明"结果可能不完整"。
+
+**Q：从 GitHub 安装时报 pnpm 符号链接（symlink / EPERM）错误？**
+A：这是 Windows 没有开启「开发者模式」导致的（普通用户不能创建符号链接）。优先用 npm 安装 `dsh-plugin-radar-ysr`；如果一定要从 GitHub 装，请在系统设置里开启开发者模式，或以管理员身份运行 DSH。
 
 **Q：内置清单多久更新一次？**
 A：运行 `npm run update-data` 可以重新生成 `data/registry-snapshot.json`。发布新版本时建议顺手更新。
@@ -188,9 +198,10 @@ ready-to-run `dsh plugin add` commands for your current profile.
 
 When GitHub is rate limited or the network is down, it degrades gracefully to a
 cached curated list or a bundled offline snapshot — including a Chinese-aware
-keyword engine — and always states which sources were used. Install with
-`dsh plugin --profile <profile> add github:yangshourong/dsh-plugin-radar` after
-following the build steps above; requires DSH 0.2.x and Node.js 20.3+.
+keyword engine — and always states which sources were used. Install from npm
+with `dsh plugin --profile <profile> add dsh-plugin-radar-ysr`, or directly
+from GitHub with `dsh plugin --profile <profile> add
+github:yangshourong/dsh-plugin-radar`; requires DSH 0.2.x and Node.js 20.3+.
 
 MIT licensed. Independent implementation inspired by
 [`dsh-find-plugin`](https://github.com/awesome-dsh-plugin/dsh-find-plugin);

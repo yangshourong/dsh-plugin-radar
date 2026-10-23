@@ -1,9 +1,10 @@
 {
-  "name": "dsh-plugin-radar",
-  "version": "0.1.0",
+  "name": "dsh-plugin-radar-ysr",
+  "version": "0.1.1",
   "description": "Plugin discovery for DeepSeek Harness: multi-source, star-ranked search across GitHub's dsh-plugin topic and the awesome-dsh-plugin curated list, with a bundled offline index and a real offline keyword engine.",
   "type": "module",
   "license": "MIT",
+  "author": "yangshourong",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yangshourong/dsh-plugin-radar.git"
