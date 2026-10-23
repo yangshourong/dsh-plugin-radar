@@ -1,5 +1,9 @@
 # DSH 插件雷达（npm: @yangshourong/dsh-plugin-radar-ysr）
 
+[![npm version](https://img.shields.io/npm/v/@yangshourong/dsh-plugin-radar-ysr?label=npm&color=cb3837)](https://www.npmjs.com/package/@yangshourong/dsh-plugin-radar-ysr)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![test](https://github.com/yangshourong/dsh-plugin-radar/actions/workflows/test.yml/badge.svg)](https://github.com/yangshourong/dsh-plugin-radar/actions/workflows/test.yml)
+
 ![DSH 插件雷达图标](icon.svg)
 
 > 一句话：**让你的 DSH Agent 学会"帮你找插件"**。你只要说一句"我想把任务完成的消息发到微信，有插件吗？"，它就会去 GitHub 和社区精选清单里搜索、挑出合适的插件，连同安装命令一起给你。
@@ -161,6 +165,8 @@ A：运行 `npm run update-data` 可以重新生成 `data/registry-snapshot.json
   pnpm install
   node --test        # 34 个用例
   ```
+
+- **CI**：GitHub Actions 会在每次 push / PR 时自动跑这套离线测试（Node 20 & 22 矩阵），并验证插件入口能正常加载。工作流文件：[`.github/workflows/test.yml`](.github/workflows/test.yml)。
 
 - **目录结构**：
 
