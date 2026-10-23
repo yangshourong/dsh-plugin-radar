@@ -1,0 +1,55 @@
+{
+  "name": "dsh-plugin-radar",
+  "version": "0.1.0",
+  "description": "Plugin discovery for DeepSeek Harness: multi-source, star-ranked search across GitHub's dsh-plugin topic and the awesome-dsh-plugin curated list, with a bundled offline index and a real offline keyword engine.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yangshourong/dsh-plugin-radar.git"
+  },
+  "homepage": "https://github.com/yangshourong/dsh-plugin-radar#readme",
+  "bugs": {
+    "url": "https://github.com/yangshourong/dsh-plugin-radar/issues"
+  },
+  "engines": {
+    "node": ">=20.3.0"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "plugin-discovery",
+    "search"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node --test",
+    "update-data": "node scripts/update-data.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.4"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "data",
+    "locale",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

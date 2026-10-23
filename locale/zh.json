@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DSH 插件雷达",
+    "description": "DeepSeek Harness 插件发现：按 star 排序的 GitHub 话题搜索 + awesome-dsh-plugin 精选列表，多源合并去重，内置离线索引与中文分词关键词引擎。"
+  }
+}
