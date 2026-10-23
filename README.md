@@ -37,11 +37,13 @@ dsh plugin --profile desktop add link:$PWD
 
 > 把 `--profile desktop` 换成你实际使用的 profile 名字（Windows PowerShell 里用 `link:$PWD` 或直接写绝对路径）。
 
-### 方式二：发布到 npm 之后
+### 方式二：直接从 GitHub 安装
 
 ```sh
-dsh plugin --profile desktop add dsh-plugin-radar
+dsh plugin --profile desktop add github:yangshourong/dsh-plugin-radar
 ```
+
+> 说明：npm 上的 `dsh-plugin-radar` 这个名字已经被另一个同名项目占用，所以本项目目前通过 GitHub 安装；如果以后要发布到 npm，会换一个不冲突的包名。
 
 安装完成后**重启 DSH**，让新的工具生效。
 
